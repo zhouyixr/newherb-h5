@@ -1,0 +1,693 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#05080d">
+<title>新本草 · 华农治愈图鉴</title>
+<!--
+  替换图片时保持文件名不变：assets/bg.jpg 是环幕背景；
+  assets/shi.jpg 柿子、assets/ju.jpg 野菊、assets/yin.jpg 银杏、assets/ai.jpg 艾草。
+  五张图片必须与 index.html 的 assets 文件夹一起部署，替换时无需改代码。
+-->
+<style>
+  :root{
+    --ink:#05080d;
+    --gold:#e8c98a;
+    --gold-soft:rgba(232,201,138,.55);
+    --jade:#7fe3c8;
+    --paper:#f4ecdd;
+    --muted:rgba(244,236,221,.62);
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%}
+  body{
+    margin:0;background:var(--ink);color:var(--paper);
+    font-family:"PingFang SC","Microsoft YaHei","Hiragino Sans GB",system-ui,sans-serif;
+    overflow:hidden;-webkit-tap-highlight-color:transparent;
+  }
+  #scene{position:fixed;inset:0;width:100%;height:100%;display:block;touch-action:none;cursor:grab}
+  #scene.dragging{cursor:grabbing}
+  #flat{
+    position:fixed;inset:0;display:none;
+    background:#05080d center/cover no-repeat url("assets/bg.jpg");
+  }
+  body.no-webgl #scene{display:none}
+  body.no-webgl #flat{display:block}
+
+  .vignette{
+    position:fixed;inset:0;pointer-events:none;z-index:5;
+    background:
+      radial-gradient(120% 90% at 50% 45%,transparent 45%,rgba(0,0,0,.42) 100%),
+      linear-gradient(180deg,rgba(0,0,0,.42),transparent 18%,transparent 76%,rgba(0,0,0,.55));
+  }
+  .grain{
+    position:fixed;inset:0;pointer-events:none;z-index:6;opacity:.05;
+    background-image:repeating-linear-gradient(0deg,rgba(255,255,255,.5) 0 1px,transparent 1px 3px);
+    mix-blend-mode:overlay;
+  }
+
+  .hud{position:fixed;inset:0;z-index:30;pointer-events:none}
+  .hud > *{pointer-events:auto}
+
+  .brand{
+    position:absolute;left:clamp(18px,3vw,46px);top:clamp(18px,3vw,40px);
+    text-shadow:0 2px 18px rgba(0,0,0,.55);
+  }
+  .brand .kicker{
+    display:flex;align-items:center;gap:10px;
+    font-size:11px;letter-spacing:.42em;color:var(--gold);text-transform:uppercase;
+  }
+  .brand .kicker::before{content:"";width:28px;height:1px;background:var(--gold-soft)}
+  .brand h1{
+    margin:8px 0 4px;font-family:"Songti SC","STSong","KaiTi","Kaiti SC",serif;
+    font-size:clamp(24px,3.4vw,44px);font-weight:600;letter-spacing:.08em;
+  }
+  .brand p{margin:0;font-size:12px;letter-spacing:.28em;color:var(--muted)}
+
+  .toolbar{position:absolute;right:clamp(16px,2.6vw,36px);top:clamp(16px,2.6vw,34px);display:flex;gap:10px}
+  .btn{
+    display:inline-flex;align-items:center;gap:8px;height:38px;padding:0 14px;
+    border:1px solid rgba(232,201,138,.32);border-radius:999px;background:rgba(8,14,20,.42);
+    color:var(--paper);font-size:12px;letter-spacing:.14em;cursor:pointer;
+    backdrop-filter:blur(10px);transition:border-color .25s,background .25s,transform .25s;
+  }
+  .btn:hover,.btn:focus-visible{border-color:var(--gold);background:rgba(20,30,40,.62);outline:none}
+  .btn:active{transform:scale(.97)}
+
+  .helpbox{
+    position:absolute;right:clamp(16px,2.6vw,36px);top:calc(clamp(16px,2.6vw,34px) + 48px);
+    width:240px;padding:14px 16px;border-radius:14px;
+    border:1px solid rgba(232,201,138,.28);background:rgba(6,11,16,.88);
+    backdrop-filter:blur(14px);box-shadow:0 20px 50px rgba(0,0,0,.5);display:none;
+  }
+  .helpbox.on{display:block}
+  .helpbox b{display:block;margin-bottom:8px;font-size:11px;letter-spacing:.34em;color:var(--gold)}
+  .helpbox p{margin:4px 0;font-size:12px;line-height:1.7;color:rgba(244,236,221,.78)}
+
+  .hint{
+    position:absolute;left:50%;top:clamp(18px,3vh,30px);transform:translateX(-50%);
+    display:flex;align-items:center;gap:12px;padding:10px 18px;border-radius:999px;
+    border:1px solid rgba(255,255,255,.1);background:rgba(5,9,14,.5);backdrop-filter:blur(10px);
+    font-size:12px;letter-spacing:.16em;color:rgba(244,236,221,.78);white-space:nowrap;
+    animation:hintIn 1.2s .8s both;transition:opacity .8s ease;
+  }
+  .hint b{color:var(--gold);font-weight:500}
+  @keyframes hintIn{from{opacity:0;transform:translate(-50%,10px)}to{opacity:1;transform:translate(-50%,0)}}
+
+  .rail{
+    position:absolute;left:50%;bottom:clamp(20px,3.2vh,34px);transform:translateX(-50%);
+    display:flex;gap:8px;padding:8px;border-radius:999px;
+    border:1px solid rgba(255,255,255,.09);background:rgba(5,9,14,.52);
+    backdrop-filter:blur(14px);box-shadow:0 18px 50px rgba(0,0,0,.35);
+    max-width:calc(100vw - 24px);overflow:auto;scrollbar-width:none;
+  }
+  .rail::-webkit-scrollbar{display:none}
+  .chip{
+    flex:0 0 auto;display:flex;align-items:center;gap:8px;height:40px;padding:0 16px;
+    border:1px solid transparent;border-radius:999px;background:transparent;color:var(--muted);
+    font-size:13px;letter-spacing:.12em;cursor:pointer;transition:.25s;
+  }
+  .chip i{width:6px;height:6px;border-radius:50%;background:currentColor;opacity:.7}
+  .chip:hover,.chip:focus-visible{color:var(--paper);background:rgba(255,255,255,.06);outline:none}
+  .chip.active{color:var(--ink);background:linear-gradient(180deg,#f2d9a4,#d9b271);border-color:transparent}
+  .chip.active i{background:var(--ink);opacity:.85}
+
+  .spot{
+    position:fixed;left:0;top:0;width:58px;height:58px;padding:0;margin:0;border:0;
+    background:transparent;cursor:pointer;z-index:20;will-change:transform;
+    opacity:0;transition:opacity .5s;pointer-events:none;
+  }
+  .spot.on{opacity:1;pointer-events:auto}
+  .spot .ring{
+    position:absolute;inset:0;border-radius:50%;
+    border:2px solid rgba(246,222,168,.92);
+    background:radial-gradient(circle at 50% 50%,rgba(4,8,12,.5) 0%,rgba(4,8,12,.26) 56%,rgba(4,8,12,0) 74%);
+    box-shadow:0 0 26px rgba(232,201,138,.55),inset 0 0 18px rgba(232,201,138,.22);
+    animation:beat 3.2s ease-in-out infinite;
+  }
+  .spot .ring::after{
+    content:"";position:absolute;inset:9px;border-radius:50%;
+    border:1px solid rgba(244,236,221,.28);
+  }
+  .spot .core{
+    position:absolute;left:50%;top:50%;width:7px;height:7px;margin:-3.5px 0 0 -3.5px;
+    border-radius:50%;background:var(--gold);box-shadow:0 0 14px 4px rgba(232,201,138,.6);
+  }
+  .spot .name{
+    position:absolute;left:50%;top:calc(100% + 7px);transform:translateX(-50%);
+    white-space:nowrap;font-size:12px;letter-spacing:.24em;color:#fff6e2;
+    padding:3px 9px 3px 11px;border-radius:999px;background:rgba(4,8,12,.55);
+    text-shadow:0 1px 10px rgba(0,0,0,.85);opacity:.95;
+  }
+  .spot .idx{
+    position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);
+    font:600 12px/1 ui-monospace,monospace;color:var(--jade);opacity:0;
+  }
+  .spot:hover .ring,.spot:focus-visible .ring{border-color:#fff3d2;box-shadow:0 0 34px rgba(232,201,138,.6),inset 0 0 20px rgba(232,201,138,.3)}
+  .spot:focus-visible{outline:none}
+  .spot:focus-visible .ring{outline:2px solid var(--jade);outline-offset:4px}
+  @keyframes beat{0%,100%{transform:scale(1);opacity:.85}50%{transform:scale(1.12);opacity:1}}
+
+  body.debug .spot .ring{border-style:dashed;border-color:rgba(127,227,200,.9);box-shadow:0 0 0 1px rgba(127,227,200,.25)}
+  body.debug .spot .idx{opacity:1}
+  body.debug .spot .name{color:var(--jade)}
+  .dbg{
+    position:fixed;left:50%;top:14px;transform:translateX(-50%);z-index:40;
+    display:none;gap:14px;padding:8px 14px;border-radius:8px;
+    background:rgba(0,0,0,.62);border:1px solid rgba(127,227,200,.35);
+    font:11px/1.4 ui-monospace,monospace;color:var(--jade);letter-spacing:.06em;
+  }
+  body.debug .dbg{display:flex}
+
+  .modal{
+    position:fixed;inset:0;z-index:60;display:flex;align-items:center;justify-content:center;
+    padding:clamp(14px,3vw,40px);visibility:hidden;opacity:0;transition:opacity .32s ease,visibility .32s;
+  }
+  .modal.open{visibility:visible;opacity:1}
+  .modal__backdrop{position:absolute;inset:0;background:rgba(2,5,9,.82);backdrop-filter:blur(8px)}
+  .card{
+    position:relative;z-index:1;display:flex;gap:clamp(18px,2.4vw,34px);align-items:center;
+    width:min(1040px,94vw);max-height:88vh;padding:clamp(16px,2vw,26px);
+    border:1px solid rgba(232,201,138,.28);border-radius:18px;
+    background:linear-gradient(160deg,rgba(18,26,32,.96),rgba(8,12,17,.97));
+    box-shadow:0 40px 120px rgba(0,0,0,.65),inset 0 1px 0 rgba(255,255,255,.06);
+    transform:scale(.9) translateY(14px);opacity:0;
+    transition:transform .38s cubic-bezier(.2,.9,.2,1),opacity .3s ease;
+  }
+  .modal.open .card{transform:scale(1) translateY(0);opacity:1}
+  .card__figure{flex:0 1 auto;margin:0;display:flex;align-items:center;justify-content:center;min-width:0}
+  .card__figure img{
+    display:block;max-width:100%;max-height:calc(88vh - 60px);width:auto;height:auto;
+    border-radius:10px;object-fit:contain;background:#0b1016;
+    box-shadow:0 18px 50px rgba(0,0,0,.5);
+  }
+  .card__body{flex:1 1 280px;min-width:240px;max-width:360px;padding:6px 4px}
+  .tag{
+    display:inline-flex;align-items:center;gap:8px;font-size:10px;letter-spacing:.36em;
+    color:var(--gold);text-transform:uppercase;
+  }
+  .tag::before{content:"";width:22px;height:1px;background:var(--gold-soft)}
+  .card h2{
+    margin:12px 0 2px;font-family:"Songti SC","STSong","KaiTi",serif;
+    font-size:clamp(28px,3.6vw,40px);font-weight:600;letter-spacing:.12em;
+  }
+  .latin{margin:0 0 16px;font:italic 13px/1.5 Georgia,"Times New Roman",serif;color:var(--jade);letter-spacing:.04em}
+  .line{margin:0 0 22px;font-size:15px;line-height:1.9;color:rgba(244,236,221,.86)}
+  .meta{margin:0;padding-top:14px;border-top:1px solid rgba(255,255,255,.08);font-size:10px;line-height:1.7;letter-spacing:.06em;color:rgba(244,236,221,.42)}
+  .close{
+    position:absolute;right:10px;top:10px;width:46px;height:46px;border-radius:50%;
+    border:1px solid rgba(255,255,255,.16);background:rgba(5,9,14,.6);color:var(--paper);
+    font-size:22px;line-height:1;cursor:pointer;backdrop-filter:blur(6px);transition:.22s;
+  }
+  .close:hover,.close:focus-visible{border-color:var(--gold);color:var(--gold);outline:none;transform:rotate(90deg)}
+
+  .loading{
+    position:fixed;inset:0;z-index:80;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;
+    background:radial-gradient(80% 60% at 50% 40%,#0d151c,#04070b 75%);
+    transition:opacity .7s ease,visibility .7s;
+  }
+  .loading.done{opacity:0;visibility:hidden}
+  .loading .mark{
+    width:54px;height:54px;border-radius:50%;border:1px solid rgba(232,201,138,.4);
+    display:grid;place-items:center;color:var(--gold);font:600 18px/1 "Songti SC",serif;
+    animation:spin 6s linear infinite;
+  }
+  @keyframes spin{to{transform:rotate(360deg)}}
+  .loading p{margin:0;font-size:12px;letter-spacing:.34em;color:var(--muted)}
+  .loading .bar{width:180px;height:1px;background:rgba(255,255,255,.1);overflow:hidden}
+  .loading .bar i{display:block;height:100%;width:40%;background:var(--gold);animation:slide 1.4s ease-in-out infinite}
+  @keyframes slide{0%{transform:translateX(-100%)}100%{transform:translateX(350%)}}
+
+  .error{
+    position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);z-index:70;display:none;
+    max-width:520px;padding:22px 26px;border:1px solid rgba(232,201,138,.3);border-radius:14px;
+    background:rgba(8,12,17,.94);font-size:14px;line-height:1.8;color:var(--paper);
+  }
+  body.failed .error{display:block}
+  body.failed .loading{display:none}
+
+  @media (max-width:760px){
+    .card{flex-direction:column;max-height:92vh;overflow:auto}
+    .card__figure img{max-height:52vh}
+    .card__body{max-width:none;min-width:0}
+    .brand p{display:none}
+    .hint{font-size:11px;top:auto;bottom:96px}
+    .rail{bottom:14px}
+  }
+  @media (prefers-reduced-motion:reduce){
+    .spot{transition:none}
+    .hint{animation:none}
+    .spot .ring{animation:none}
+    .loading .mark{animation:none}
+    .card,.modal{transition-duration:.01ms}
+  }
+</style>
+</head>
+<body>
+<canvas id="scene" aria-label="360度环幕场景"></canvas>
+<div id="flat" aria-hidden="true"></div>
+<div class="vignette" aria-hidden="true"></div>
+<div class="grain" aria-hidden="true"></div>
+
+<div class="hud">
+  <header class="brand">
+    <div class="kicker">New Herbal · HZAU</div>
+    <h1>新本草</h1>
+    <p>华农治愈图鉴 · 深秋限定</p>
+  </header>
+  <div class="toolbar">
+    <button class="btn" id="btnFull" type="button" aria-label="切换全屏">全屏</button>
+    <button class="btn" id="btnHelp" type="button" aria-label="查看操作说明">操作</button>
+  </div>
+  <div class="helpbox" id="helpbox" role="note">
+    <b>操作</b>
+    <p>拖动 / 滑动：环视场景</p>
+    <p>点击发光植物或底部名称：查看图鉴</p>
+    <p>方向键：微调视角 · Esc：关闭图鉴</p>
+    <p>H：显示 / 隐藏热区 · 全屏：沉浸模式</p>
+  </div>
+  <div class="hint" id="hint"><b>拖动</b>环视 · 点击发光植物 · <b>H</b> 显示热区</div>
+  <nav class="rail" aria-label="植物图鉴导航">
+    <button class="chip" type="button" data-go="0"><i></i>柿子</button>
+    <button class="chip" type="button" data-go="1"><i></i>野菊</button>
+    <button class="chip" type="button" data-go="2"><i></i>银杏</button>
+    <button class="chip" type="button" data-go="3"><i></i>艾草</button>
+  </nav>
+</div>
+
+<div id="spots"></div>
+<div class="dbg" id="dbg" aria-hidden="true"><span id="dbgYaw">yaw 0.0°</span><span id="dbgPitch">pitch 0.0°</span><span id="dbgFov">fov 48°</span></div>
+
+<div class="modal" id="modal" aria-hidden="true">
+  <div class="modal__backdrop" data-close></div>
+  <figure class="card" role="dialog" aria-modal="true" aria-labelledby="mTitle">
+    <button class="close" type="button" id="btnClose" aria-label="关闭图鉴">×</button>
+    <div class="card__figure"><img id="mImg" alt=""></div>
+    <figcaption class="card__body">
+      <span class="tag">新本草 · 植物图鉴</span>
+      <h2 id="mTitle"></h2>
+      <p class="latin" id="mLatin"></p>
+      <p class="line" id="mLine"></p>
+      <p class="meta" id="mMeta"></p>
+    </figcaption>
+  </figure>
+</div>
+
+<div class="loading" id="loading">
+  <div class="mark">本</div>
+  <p>正在展开环幕</p>
+  <div class="bar"><i></i></div>
+</div>
+
+<div class="error" id="error">
+  <strong>环幕加载失败</strong><br>
+  请确认 <code>assets/bg.jpg</code> 与 <code>index.html</code> 一起部署，然后刷新页面。<br>
+  如果使用本地双击打开，请改用本地服务器预览。
+</div>
+
+<script>
+(function(){
+  "use strict";
+
+  var PLANTS = [
+    {name:"柿子", latin:"Diospyros kaki", file:"assets/shi.jpg", x:0.900, y:0.795,
+     line:"霜降之后才肯把甜意交出来。事事如意，是秋天最朴素的祝福。",
+     credit:"图：FreCha / Wikimedia Commons · CC BY-SA 4.0"},
+    {name:"野菊", latin:"Chrysanthemum indicum", file:"assets/ju.jpg", x:0.110, y:0.860,
+     line:"长在路边，开得比谁都认真。清苦的日子，也能有自己的花期。",
+     credit:"图：Joydeep / Wikimedia Commons · CC BY-SA 3.0"},
+    {name:"银杏", latin:"Ginkgo biloba", file:"assets/yin.jpg", x:0.935, y:0.520,
+     line:"一整年的沉默，只为在深秋点亮一条路。慢一点，也算抵达。",
+     credit:"图：Benjamin Ceci / Wikimedia Commons · 公有领域"},
+    {name:"艾草", latin:"Artemisia argyi", file:"assets/ai.jpg", x:0.545, y:0.875,
+     line:"气味清冽，随处可生。草木有本心，不必人人识得。",
+     credit:"图：V.Thamaraiselvi / Wikimedia Commons · CC BY-SA 4.0"}
+  ];
+
+  var FOV_Y = 52 * Math.PI / 180;
+  var canvas = document.getElementById("scene");
+  var gl = null;
+  try {
+    gl = canvas.getContext("webgl", {antialias:true, alpha:false, premultipliedAlpha:false})
+      || canvas.getContext("experimental-webgl");
+  } catch(e){ gl = null; }
+
+  var yaw = -0.62, pitch = -0.30, targetYaw = -0.62, targetPitch = -0.30;
+  var fov = FOV_Y;
+  var maxYaw = Math.PI / 4, maxPitch = 0.36;
+  var dragging = false, lastX = 0, lastY = 0, moved = 0;
+  var dpr = Math.min(window.devicePixelRatio || 1, 2);
+  var W = 0, H = 0;
+  var spots = [];
+  var lastSpot = null;
+  var debug = /(?:^|[?&])debug=1(?:&|$)/.test(location.search);
+
+  function clamp(v,a,b){ return Math.max(a, Math.min(b, v)); }
+
+  /* ---------- WebGL ---------- */
+  var vs = [
+    "attribute vec2 aPos;",
+    "void main(){ gl_Position = vec4(aPos, 0.0, 1.0); }"
+  ].join("\n");
+
+  var fs = [
+    "precision highp float;",
+    "uniform vec2 uRes;",
+    "uniform float uYaw;",
+    "uniform float uPitch;",
+    "uniform float uF;",
+    "uniform sampler2D uTex;",
+    "const float PI = 3.141592653589793;",
+    "void main(){",
+    "  vec2 p = (gl_FragCoord.xy * 2.0 - uRes) / uRes.y;",
+    "  vec3 dc = normalize(vec3(p.x, p.y, -uF));",
+    "  float cp = cos(uPitch), sp = sin(uPitch);",
+    "  vec3 d1 = vec3(dc.x, dc.y * cp - dc.z * sp, dc.y * sp + dc.z * cp);",
+    "  float cy = cos(uYaw), sy = sin(uYaw);",
+    "  vec3 d = vec3(d1.x * cy + d1.z * sy, d1.y, -d1.x * sy + d1.z * cy);",
+    "  float lon = atan(d.x, -d.z);",
+    "  float lat = asin(clamp(d.y, -1.0, 1.0));",
+    "  vec2 uv = vec2(0.5 + lon / PI, 0.5 - lat / (PI * 0.5));",
+    "  if(uv.x < 0.0 || uv.x > 1.0 || uv.y < 0.0 || uv.y > 1.0){",
+    "    gl_FragColor = vec4(0.02, 0.03, 0.05, 1.0);",
+    "  } else {",
+    "    gl_FragColor = texture2D(uTex, uv);",
+    "  }",
+    "}"
+  ].join("\n");
+
+  var program = null, uRes, uYaw, uPitch, uF, uTex, tex = null, buf = null;
+
+  function compile(type, src){
+    var s = gl.createShader(type);
+    gl.shaderSource(s, src); gl.compileShader(s);
+    if(!gl.getShaderParameter(s, gl.COMPILE_STATUS)){
+      throw new Error(gl.getShaderInfoLog(s) || "shader");
+    }
+    return s;
+  }
+
+  function initGL(){
+    program = gl.createProgram();
+    gl.attachShader(program, compile(gl.VERTEX_SHADER, vs));
+    gl.attachShader(program, compile(gl.FRAGMENT_SHADER, fs));
+    gl.linkProgram(program);
+    if(!gl.getProgramParameter(program, gl.LINK_STATUS)){
+      throw new Error(gl.getProgramInfoLog(program) || "link");
+    }
+    gl.useProgram(program);
+    uRes = gl.getUniformLocation(program, "uRes");
+    uYaw = gl.getUniformLocation(program, "uYaw");
+    uPitch = gl.getUniformLocation(program, "uPitch");
+    uF = gl.getUniformLocation(program, "uF");
+    uTex = gl.getUniformLocation(program, "uTex");
+
+    buf = gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, buf);
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1,-1, 3,-1, -1,3]), gl.STATIC_DRAW);
+    var aPos = gl.getAttribLocation(program, "aPos");
+    gl.enableVertexAttribArray(aPos);
+    gl.vertexAttribPointer(aPos, 2, gl.FLOAT, false, 0, 0);
+
+    gl.uniform1i(uTex, 0);
+    gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, false);
+    gl.clearColor(0.02, 0.03, 0.05, 1);
+  }
+
+  function loadTexture(src){
+    return new Promise(function(resolve, reject){
+      var img = new Image();
+      img.crossOrigin = "anonymous";
+      img.onload = function(){
+        try{
+          tex = gl.createTexture();
+          gl.bindTexture(gl.TEXTURE_2D, tex);
+          gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, img);
+          gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+          gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+          gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+          gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+          resolve();
+        }catch(err){ reject(err); }
+      };
+      img.onerror = function(){ reject(new Error("image")); };
+      img.src = src;
+    });
+  }
+
+  function resize(){
+    dpr = Math.min(window.devicePixelRatio || 1, 2);
+    W = window.innerWidth; H = window.innerHeight;
+    canvas.width = Math.round(W * dpr);
+    canvas.height = Math.round(H * dpr);
+    canvas.style.width = W + "px";
+    canvas.style.height = H + "px";
+    if(gl){ gl.viewport(0, 0, canvas.width, canvas.height); }
+    var aspect = W / H;
+    var halfH = Math.atan(Math.tan(fov * 0.5) * aspect);
+    maxYaw = Math.max(0.12, Math.PI * 0.5 - halfH - 0.015);
+    maxPitch = Math.max(0.06, Math.PI * 0.25 - fov * 0.5 - 0.01);
+    targetYaw = clamp(targetYaw, -maxYaw, maxYaw);
+    targetPitch = clamp(targetPitch, -maxPitch, maxPitch);
+    yaw = clamp(yaw, -maxYaw, maxYaw);
+    pitch = clamp(pitch, -maxPitch, maxPitch);
+  }
+
+  function render(){
+    if(gl && tex){
+      gl.clear(gl.COLOR_BUFFER_BIT);
+      gl.uniform2f(uRes, canvas.width, canvas.height);
+      gl.uniform1f(uYaw, yaw);
+      gl.uniform1f(uPitch, pitch);
+      gl.uniform1f(uF, 1 / Math.tan(fov * 0.5));
+      gl.drawArrays(gl.TRIANGLES, 0, 3);
+    }
+    updateSpots();
+    requestAnimationFrame(render);
+  }
+
+  /* ---------- hotspots ---------- */
+  function lonLat(p){
+    return { lon:(p.x - 0.5) * Math.PI, lat:(0.5 - p.y) * (Math.PI * 0.5) };
+  }
+
+  function project(p){
+    var ll = lonLat(p);
+    var cl = Math.cos(ll.lat), sl = Math.sin(ll.lat);
+    var x = cl * Math.sin(ll.lon), y = sl, z = -cl * Math.cos(ll.lon);
+    var cy = Math.cos(yaw), sy = Math.sin(yaw);
+    var x1 = x * cy - z * sy;
+    var z1 = x * sy + z * cy;
+    var cp = Math.cos(pitch), sp = Math.sin(pitch);
+    var y2 = y * cp + z1 * sp;
+    var z2 = -y * sp + z1 * cp;
+    if(z2 > -0.02) return null;
+    var f = 1 / Math.tan(fov * 0.5);
+    var aspect = W / H;
+    var sx = x1 / (-z2) * f / aspect;
+    var sy2 = y2 / (-z2) * f;
+    return { x:(sx * 0.5 + 0.5) * W, y:(0.5 - sy2 * 0.5) * H };
+  }
+
+  function buildSpots(){
+    var host = document.getElementById("spots");
+    PLANTS.forEach(function(p, i){
+      var b = document.createElement("button");
+      b.type = "button";
+      b.className = "spot";
+      b.setAttribute("aria-label", p.name + "图鉴");
+      b.innerHTML = '<span class="ring"></span><span class="core"></span>' +
+                    '<span class="idx">' + String.fromCharCode(65 + i) + '</span>' +
+                    '<span class="name">' + p.name + '</span>';
+      b.addEventListener("click", function(){ openModal(i, b); });
+      b.addEventListener("focus", function(){ lastSpot = b; });
+      host.appendChild(b);
+      spots.push(b);
+    });
+  }
+
+  function updateSpots(){
+    for(var i = 0; i < PLANTS.length; i++){
+      var b = spots[i];
+      if(!b) continue;
+      var pt = gl ? project(PLANTS[i]) : { x:PLANTS[i].x * W, y:PLANTS[i].y * H };
+      if(!pt){
+        b.classList.remove("on");
+        continue;
+      }
+      b.style.transform = "translate(" + pt.x.toFixed(1) + "px," + pt.y.toFixed(1) + "px) translate(-50%,-50%)";
+      if(pt.x < -70 || pt.x > W + 70 || pt.y < -70 || pt.y > H + 70){
+        b.classList.remove("on");
+      } else {
+        b.classList.add("on");
+      }
+    }
+    if(debug){
+      document.getElementById("dbgYaw").textContent = "yaw " + (yaw * 180 / Math.PI).toFixed(1) + "°";
+      document.getElementById("dbgPitch").textContent = "pitch " + (pitch * 180 / Math.PI).toFixed(1) + "°";
+      document.getElementById("dbgFov").textContent = "fov " + (fov * 180 / Math.PI).toFixed(0) + "°";
+    }
+  }
+
+  /* ---------- interaction ---------- */
+  function setDebug(on){
+    debug = on;
+    document.body.classList.toggle("debug", on);
+  }
+
+  function onDown(e){
+    if(e.target.closest && e.target.closest(".hud,.modal,.spot")) return;
+    dragging = true; moved = 0;
+    lastX = e.clientX; lastY = e.clientY;
+    canvas.classList.add("dragging");
+    if(canvas.setPointerCapture && e.pointerId != null){
+      try{ canvas.setPointerCapture(e.pointerId); }catch(err){}
+    }
+  }
+  function onMove(e){
+    if(!dragging) return;
+    var dx = e.clientX - lastX, dy = e.clientY - lastY;
+    lastX = e.clientX; lastY = e.clientY;
+    moved += Math.abs(dx) + Math.abs(dy);
+    targetYaw = clamp(targetYaw + dx * 0.0026, -maxYaw, maxYaw);
+    targetPitch = clamp(targetPitch + dy * 0.0022, -maxPitch, maxPitch);
+  }
+  function onUp(){ dragging = false; canvas.classList.remove("dragging"); }
+
+  function focusPlant(i){
+    var ll = lonLat(PLANTS[i]);
+    targetYaw = clamp(-ll.lon, -maxYaw, maxYaw);
+    targetPitch = clamp(ll.lat, -maxPitch, maxPitch);
+    spots.forEach(function(b, k){ b.classList.toggle("active", k === i); });
+    var chips = document.querySelectorAll(".chip");
+    for(var k = 0; k < chips.length; k++) chips[k].classList.toggle("active", k === i);
+  }
+
+  /* ---------- modal ---------- */
+  var modal = document.getElementById("modal");
+  var mImg = document.getElementById("mImg");
+  var mTitle = document.getElementById("mTitle");
+  var mLatin = document.getElementById("mLatin");
+  var mLine = document.getElementById("mLine");
+  var mMeta = document.getElementById("mMeta");
+  var btnClose = document.getElementById("btnClose");
+  var lastTrigger = null;
+
+  function openModal(i, trigger){
+    var p = PLANTS[i];
+    lastTrigger = trigger || lastSpot || null;
+    var hintEl = document.getElementById("hint");
+    if(hintEl) hintEl.style.opacity = "0";
+    mImg.src = p.file;
+    mImg.alt = p.name + "的实拍照片";
+    mTitle.textContent = p.name;
+    mLatin.textContent = p.latin;
+    mLine.textContent = p.line;
+    mMeta.textContent = p.credit + " · 图片仅作科普展示";
+    modal.classList.add("open");
+    modal.setAttribute("aria-hidden", "false");
+    document.body.style.overflow = "hidden";
+    setTimeout(function(){ btnClose.focus(); }, 60);
+  }
+
+  function closeModal(){
+    if(!modal.classList.contains("open")) return;
+    modal.classList.remove("open");
+    modal.setAttribute("aria-hidden", "true");
+    document.body.style.overflow = "";
+    if(lastTrigger && document.body.contains(lastTrigger)) lastTrigger.focus();
+  }
+
+  /* ---------- boot ---------- */
+  function fail(msg){
+    document.body.classList.add("failed");
+    var el = document.getElementById("error");
+    if(msg){ el.innerHTML = "<strong>环幕加载失败</strong><br>" + msg; }
+  }
+
+  function boot(){
+    buildSpots();
+    resize();
+    window.addEventListener("resize", resize);
+    window.addEventListener("orientationchange", function(){ setTimeout(resize, 120); });
+
+    canvas.addEventListener("pointerdown", onDown);
+    window.addEventListener("pointermove", onMove);
+    window.addEventListener("pointerup", onUp);
+    window.addEventListener("pointercancel", onUp);
+
+    document.getElementById("btnClose").addEventListener("click", closeModal);
+    modal.addEventListener("click", function(e){
+      if(e.target === modal || e.target.hasAttribute("data-close")) closeModal();
+    });
+    document.addEventListener("keydown", function(e){
+      if(e.key === "Escape"){ closeModal(); return; }
+      if(e.key === "h" || e.key === "H"){ setDebug(!debug); return; }
+      if(modal.classList.contains("open")) return;
+      if(e.key === "ArrowLeft") targetYaw = clamp(targetYaw - 0.06, -maxYaw, maxYaw);
+      if(e.key === "ArrowRight") targetYaw = clamp(targetYaw + 0.06, -maxYaw, maxYaw);
+      if(e.key === "ArrowUp") targetPitch = clamp(targetPitch - 0.04, -maxPitch, maxPitch);
+      if(e.key === "ArrowDown") targetPitch = clamp(targetPitch + 0.04, -maxPitch, maxPitch);
+    });
+
+    var chips = document.querySelectorAll(".chip");
+    for(var i = 0; i < chips.length; i++){
+      (function(idx){
+        chips[idx].addEventListener("click", function(){ focusPlant(idx); });
+      })(i);
+    }
+
+    document.getElementById("btnFull").addEventListener("click", function(){
+      var d = document;
+      if(!d.fullscreenElement && !d.webkitFullscreenElement){
+        var el = d.documentElement;
+        (el.requestFullscreen || el.webkitRequestFullscreen || function(){}).call(el);
+      } else {
+        (d.exitFullscreen || d.webkitExitFullscreen || function(){}).call(d);
+      }
+    });
+
+    document.getElementById("btnHelp").addEventListener("click", function(){
+      document.getElementById("helpbox").classList.toggle("on");
+    });
+
+    var hintEl = document.getElementById("hint");
+    setTimeout(function(){ if(hintEl) hintEl.style.opacity = "0"; }, 9000);
+
+    if(debug) setDebug(true);
+
+    if(!gl){ document.body.classList.add("no-webgl"); finishBoot(); return; }
+
+    try{ initGL(); }catch(err){ document.body.classList.add("no-webgl"); finishBoot(); return; }
+
+    loadTexture("assets/bg.jpg").then(function(){
+      finishBoot();
+    }).catch(function(){
+      document.body.classList.add("no-webgl");
+      finishBoot();
+    });
+  }
+
+  function finishBoot(){
+    var loading = document.getElementById("loading");
+    loading.classList.add("done");
+    setTimeout(function(){ if(loading.parentNode) loading.parentNode.removeChild(loading); }, 900);
+    resize();
+    requestAnimationFrame(render);
+  }
+
+  // smooth easing
+  setInterval(function(){
+    yaw += (targetYaw - yaw) * 0.16;
+    pitch += (targetPitch - pitch) * 0.16;
+  }, 16);
+
+  // init
+  if(document.readyState === "loading"){
+    document.addEventListener("DOMContentLoaded", boot);
+  } else { boot(); }
+})();
+</script>
+</body>
+</html>
