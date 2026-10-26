@@ -35,6 +35,20 @@
   body.no-webgl #scene{display:none}
   body.no-webgl #flat{display:block}
 
+  #dust{position:fixed;inset:0;width:100%;height:100%;pointer-events:none;z-index:4}
+  .aurora{
+    position:fixed;inset:-15%;z-index:3;pointer-events:none;opacity:.5;
+    background:
+      radial-gradient(38% 32% at 30% 42%, rgba(255,214,140,.20), transparent 70%),
+      radial-gradient(34% 30% at 72% 58%, rgba(127,227,200,.14), transparent 70%);
+    filter:blur(28px);mix-blend-mode:screen;
+    animation:auroraDrift 26s ease-in-out infinite alternate;
+  }
+  @keyframes auroraDrift{
+    0%{transform:translate3d(-2%,-1%,0) scale(1)}
+    100%{transform:translate3d(3%,2%,0) scale(1.08)}
+  }
+
   .vignette{
     position:fixed;inset:0;pointer-events:none;z-index:5;
     background:
@@ -168,7 +182,7 @@
   .modal__backdrop{position:absolute;inset:0;background:rgba(2,5,9,.82);backdrop-filter:blur(8px)}
   .card{
     position:relative;z-index:1;display:flex;gap:clamp(18px,2.4vw,34px);align-items:center;
-    width:min(1040px,94vw);max-height:88vh;padding:clamp(16px,2vw,26px);
+    width:min(1120px,94vw);max-height:90vh;padding:clamp(16px,2vw,26px);
     border:1px solid rgba(232,201,138,.28);border-radius:18px;
     background:linear-gradient(160deg,rgba(18,26,32,.96),rgba(8,12,17,.97));
     box-shadow:0 40px 120px rgba(0,0,0,.65),inset 0 1px 0 rgba(255,255,255,.06);
@@ -178,11 +192,16 @@
   .modal.open .card{transform:scale(1) translateY(0);opacity:1}
   .card__figure{flex:0 1 auto;margin:0;display:flex;align-items:center;justify-content:center;min-width:0}
   .card__figure img{
-    display:block;max-width:100%;max-height:calc(88vh - 60px);width:auto;height:auto;
+    display:block;max-width:100%;max-height:calc(90vh - 60px);width:auto;height:auto;
     border-radius:10px;object-fit:contain;background:#0b1016;
     box-shadow:0 18px 50px rgba(0,0,0,.5);
   }
-  .card__body{flex:1 1 280px;min-width:240px;max-width:360px;padding:6px 4px}
+  .card__body{
+    flex:1 1 360px;min-width:280px;max-width:440px;padding:6px 8px 6px 4px;
+    max-height:calc(90vh - 56px);overflow:auto;
+  }
+  .card__body::-webkit-scrollbar{width:6px}
+  .card__body::-webkit-scrollbar-thumb{background:rgba(232,201,138,.28);border-radius:3px}
   .tag{
     display:inline-flex;align-items:center;gap:8px;font-size:10px;letter-spacing:.36em;
     color:var(--gold);text-transform:uppercase;
@@ -192,8 +211,18 @@
     margin:12px 0 2px;font-family:"Songti SC","STSong","KaiTi",serif;
     font-size:clamp(28px,3.6vw,40px);font-weight:600;letter-spacing:.12em;
   }
-  .latin{margin:0 0 16px;font:italic 13px/1.5 Georgia,"Times New Roman",serif;color:var(--jade);letter-spacing:.04em}
-  .line{margin:0 0 22px;font-size:15px;line-height:1.9;color:rgba(244,236,221,.86)}
+  .cure{margin:0 0 4px;font-size:13px;letter-spacing:.08em;color:#f0d7a6}
+  .latin{margin:0 0 12px;font:italic 13px/1.5 Georgia,"Times New Roman",serif;color:var(--jade);letter-spacing:.04em}
+  .kv{margin:10px 0 14px;display:grid;gap:8px}
+  .kv div{display:grid;grid-template-columns:64px 1fr;gap:12px;padding-top:8px;border-top:1px solid rgba(255,255,255,.08)}
+  .kv dt{margin:0;font-size:10px;letter-spacing:.16em;color:var(--gold);opacity:.9;padding-top:3px;white-space:nowrap}
+  .kv dd{margin:0;font-size:13px;line-height:1.7;color:rgba(244,236,221,.86)}
+  .advice{margin:0 0 14px;font-size:13px;line-height:1.9;color:rgba(244,236,221,.82)}
+  .bless{
+    margin:0 0 16px;padding:11px 14px;border-left:2px solid var(--gold);border-radius:0 8px 8px 0;
+    background:rgba(232,201,138,.07);font-family:"Songti SC","STSong","KaiTi",serif;
+    font-size:15px;line-height:1.8;color:#f8ebcb;
+  }
   .meta{margin:0;padding-top:14px;border-top:1px solid rgba(255,255,255,.08);font-size:10px;line-height:1.7;letter-spacing:.06em;color:rgba(244,236,221,.42)}
   .close{
     position:absolute;right:10px;top:10px;width:46px;height:46px;border-radius:50%;
@@ -230,7 +259,7 @@
   @media (max-width:760px){
     .card{flex-direction:column;max-height:92vh;overflow:auto}
     .card__figure img{max-height:52vh}
-    .card__body{max-width:none;min-width:0}
+    .card__body{max-width:none;min-width:0;max-height:none;overflow:visible;padding-right:2px}
     .brand p{display:none}
     .hint{font-size:11px;top:auto;bottom:96px}
     .rail{bottom:14px}
@@ -240,6 +269,7 @@
     .hint{animation:none}
     .spot .ring{animation:none}
     .loading .mark{animation:none}
+    .aurora{animation:none}
     .card,.modal{transition-duration:.01ms}
   }
 </style>
@@ -247,6 +277,8 @@
 <body>
 <canvas id="scene" aria-label="360度环幕场景"></canvas>
 <div id="flat" aria-hidden="true"></div>
+<canvas id="dust" aria-hidden="true"></canvas>
+<div class="aurora" aria-hidden="true"></div>
 <div class="vignette" aria-hidden="true"></div>
 <div class="grain" aria-hidden="true"></div>
 
@@ -285,10 +317,16 @@
     <button class="close" type="button" id="btnClose" aria-label="关闭图鉴">×</button>
     <div class="card__figure"><img id="mImg" alt=""></div>
     <figcaption class="card__body">
-      <span class="tag">新本草 · 植物图鉴</span>
+      <span class="tag" id="mTag">全息本草档案</span>
       <h2 id="mTitle"></h2>
+      <p class="cure" id="mCure"></p>
       <p class="latin" id="mLatin"></p>
-      <p class="line" id="mLine"></p>
+      <dl class="kv">
+        <div><dt>主治症状</dt><dd id="mSymptom"></dd></div>
+        <div><dt>本草成分</dt><dd id="mPart"></dd></div>
+      </dl>
+      <p class="advice" id="mAdvice"></p>
+      <blockquote class="bless" id="mBless"></blockquote>
       <p class="meta" id="mMeta"></p>
     </figcaption>
   </figure>
@@ -311,17 +349,33 @@
   "use strict";
 
   var PLANTS = [
-    {name:"柿子", latin:"Diospyros kaki", file:"assets/shi.jpg", x:0.900, y:0.795,
-     line:"霜降之后才肯把甜意交出来。事事如意，是秋天最朴素的祝福。",
+    {name:"柿子", no:"No.01", cure:"专治「期末内耗、高数焦虑」",
+     latin:"Diospyros kaki", file:"assets/shi.jpg", x:0.900, y:0.795,
+     symptom:"期末复习内耗、高数大物焦虑、深夜 emo。",
+     part:"柿子（柿蒂）",
+     advice:"柿蒂降逆止呃，理气宽中。心气不顺的时候，看看南湖边的柿子。",
+     bless:"吃完这口甜的，祝你「好柿发生」。",
      credit:"图：FreCha / Wikimedia Commons · CC BY-SA 4.0"},
-    {name:"野菊", latin:"Chrysanthemum indicum", file:"assets/ju.jpg", x:0.110, y:0.860,
-     line:"长在路边，开得比谁都认真。清苦的日子，也能有自己的花期。",
+    {name:"野菊", no:"No.02", cure:"专治「画图眼干、代码眼花」",
+     latin:"Chrysanthemum indicum", file:"assets/ju.jpg", x:0.110, y:0.860,
+     symptom:"风景园林熬夜画图、农业机器人死盯屏幕、双眼红血丝。",
+     part:"野菊（南湖限定）",
+     advice:"野菊花清肝明目，清热解毒。给过热的 CPU 和视网膜降降温。",
+     bless:"代码跑不通，画图没灵感？去湖边吹吹风，看一眼野菊吧。",
      credit:"图：Joydeep / Wikimedia Commons · CC BY-SA 3.0"},
-    {name:"银杏", latin:"Ginkgo biloba", file:"assets/yin.jpg", x:0.935, y:0.520,
-     line:"一整年的沉默，只为在深秋点亮一条路。慢一点，也算抵达。",
+    {name:"银杏", no:"No.03", cure:"专治「熬夜掉发、脑力透支」",
+     latin:"Ginkgo biloba", file:"assets/yin.jpg", x:0.935, y:0.520,
+     symptom:"早八起不来、熬夜记不住知识点、发际线后移。",
+     part:"银杏（叶 / 果）",
+     advice:"银杏叶活血化瘀，通络健脑。给大负荷运转的大脑做个 SPA。",
+     bless:"秋天掉的是银杏叶，不是你的头发。别慌，稳住。",
      credit:"图：Benjamin Ceci / Wikimedia Commons · 公有领域"},
-    {name:"艾草", latin:"Artemisia argyi", file:"assets/ai.jpg", x:0.545, y:0.875,
-     line:"气味清冽，随处可生。草木有本心，不必人人识得。",
+    {name:"艾草", no:"No.04", cure:"专治「环湖跑后遗症、体寒」",
+     latin:"Artemisia argyi", file:"assets/ai.jpg", x:0.545, y:0.875,
+     symptom:"体测八百米虚脱、南湖夜跑腿酸、换季手脚冰凉。",
+     part:"艾草",
+     advice:"艾草温经散寒，祛湿止痛。华农人专属的赛后恢复神器。",
+     bless:"跑完南湖，泡个脚吧。今天辛苦啦，早点睡。",
      credit:"图：V.Thamaraiselvi / Wikimedia Commons · CC BY-SA 4.0"}
   ];
 
@@ -334,6 +388,8 @@
   } catch(e){ gl = null; }
 
   var yaw = -0.62, pitch = -0.30, targetYaw = -0.62, targetPitch = -0.30;
+  var reduceMotion = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  var lastActive = Date.now();
   var fov = FOV_Y;
   var maxYaw = Math.PI / 4, maxPitch = 0.36;
   var dragging = false, lastX = 0, lastY = 0, moved = 0;
@@ -452,6 +508,7 @@
     targetPitch = clamp(targetPitch, -maxPitch, maxPitch);
     yaw = clamp(yaw, -maxYaw, maxYaw);
     pitch = clamp(pitch, -maxPitch, maxPitch);
+    if(typeof initDust === "function") initDust();
   }
 
   function render(){
@@ -530,6 +587,77 @@
     }
   }
 
+  /* ---------- ambient dust ---------- */
+  var dustCanvas = document.getElementById("dust");
+  var dctx = dustCanvas ? dustCanvas.getContext("2d") : null;
+  var dustParticles = [];
+  var dustSprites = null;
+  var dustW = 0, dustH = 0;
+
+  function dustSprite(rgb){
+    var c = document.createElement("canvas");
+    c.width = c.height = 64;
+    var g = c.getContext("2d");
+    var rad = g.createRadialGradient(32, 32, 0, 32, 32, 32);
+    rad.addColorStop(0, "rgba(" + rgb + ",1)");
+    rad.addColorStop(0.35, "rgba(" + rgb + ",.55)");
+    rad.addColorStop(1, "rgba(" + rgb + ",0)");
+    g.fillStyle = rad;
+    g.fillRect(0, 0, 64, 64);
+    return c;
+  }
+
+  function initDust(){
+    if(!dustCanvas || !dctx) return;
+    var ratio = Math.min(window.devicePixelRatio || 1, 2);
+    dustW = window.innerWidth;
+    dustH = window.innerHeight;
+    dustCanvas.width = Math.round(dustW * ratio);
+    dustCanvas.height = Math.round(dustH * ratio);
+    dustCanvas.style.width = dustW + "px";
+    dustCanvas.style.height = dustH + "px";
+    dctx.setTransform(ratio, 0, 0, ratio, 0, 0);
+    if(!dustSprites){
+      dustSprites = { gold: dustSprite("232,201,138"), jade: dustSprite("127,227,200") };
+    }
+    var count = Math.round(Math.min(64, Math.max(26, dustW / 26)));
+    dustParticles = [];
+    for(var i = 0; i < count; i++){
+      dustParticles.push({
+        x: Math.random() * dustW,
+        y: Math.random() * dustH,
+        r: 0.8 + Math.random() * 2.0,
+        vy: -(0.08 + Math.random() * 0.32),
+        sway: 0.4 + Math.random() * 1.1,
+        phase: Math.random() * Math.PI * 2,
+        a: 0.10 + Math.random() * 0.35,
+        gold: Math.random() > 0.35
+      });
+    }
+  }
+
+  function dustLoop(ts){
+    if(!dctx) return;
+    dctx.clearRect(0, 0, dustW, dustH);
+    if(reduceMotion) return;
+    for(var i = 0; i < dustParticles.length; i++){
+      var p = dustParticles[i];
+      p.y += p.vy;
+      p.phase += 0.01;
+      p.x += Math.sin(p.phase) * p.sway * 0.10;
+      if(p.y < -20){ p.y = dustH + 20; p.x = Math.random() * dustW; }
+      if(p.x < -20) p.x = dustW + 20;
+      if(p.x > dustW + 20) p.x = -20;
+      var tw = 0.55 + 0.45 * Math.sin(ts * 0.0012 + p.phase);
+      var size = p.r * 7;
+      dctx.globalAlpha = p.a * tw;
+      dctx.drawImage(p.gold ? dustSprites.gold : dustSprites.jade,
+                     p.x - size / 2, p.y - size / 2, size, size);
+    }
+    dctx.globalAlpha = 1;
+    requestAnimationFrame(dustLoop);
+  }
+
   /* ---------- interaction ---------- */
   function setDebug(on){
     debug = on;
@@ -538,6 +666,7 @@
 
   function onDown(e){
     if(e.target.closest && e.target.closest(".hud,.modal,.spot")) return;
+    lastActive = Date.now();
     dragging = true; moved = 0;
     lastX = e.clientX; lastY = e.clientY;
     canvas.classList.add("dragging");
@@ -550,12 +679,14 @@
     var dx = e.clientX - lastX, dy = e.clientY - lastY;
     lastX = e.clientX; lastY = e.clientY;
     moved += Math.abs(dx) + Math.abs(dy);
+    lastActive = Date.now();
     targetYaw = clamp(targetYaw + dx * 0.0026, -maxYaw, maxYaw);
     targetPitch = clamp(targetPitch + dy * 0.0022, -maxPitch, maxPitch);
   }
   function onUp(){ dragging = false; canvas.classList.remove("dragging"); }
 
   function focusPlant(i){
+    lastActive = Date.now();
     var ll = lonLat(PLANTS[i]);
     targetYaw = clamp(-ll.lon, -maxYaw, maxYaw);
     targetPitch = clamp(ll.lat, -maxPitch, maxPitch);
@@ -568,8 +699,13 @@
   var modal = document.getElementById("modal");
   var mImg = document.getElementById("mImg");
   var mTitle = document.getElementById("mTitle");
+  var mTag = document.getElementById("mTag");
+  var mCure = document.getElementById("mCure");
   var mLatin = document.getElementById("mLatin");
-  var mLine = document.getElementById("mLine");
+  var mSymptom = document.getElementById("mSymptom");
+  var mPart = document.getElementById("mPart");
+  var mAdvice = document.getElementById("mAdvice");
+  var mBless = document.getElementById("mBless");
   var mMeta = document.getElementById("mMeta");
   var btnClose = document.getElementById("btnClose");
   var lastTrigger = null;
@@ -577,13 +713,19 @@
   function openModal(i, trigger){
     var p = PLANTS[i];
     lastTrigger = trigger || lastSpot || null;
+    lastActive = Date.now();
     var hintEl = document.getElementById("hint");
     if(hintEl) hintEl.style.opacity = "0";
     mImg.src = p.file;
     mImg.alt = p.name + "的实拍照片";
+    mTag.textContent = "全息本草档案 · " + p.no;
     mTitle.textContent = p.name;
+    mCure.textContent = p.cure;
     mLatin.textContent = p.latin;
-    mLine.textContent = p.line;
+    mSymptom.textContent = p.symptom;
+    mPart.textContent = p.part;
+    mAdvice.textContent = p.advice;
+    mBless.textContent = p.bless;
     mMeta.textContent = p.credit + " · 图片仅作科普展示";
     modal.classList.add("open");
     modal.setAttribute("aria-hidden", "false");
@@ -593,6 +735,7 @@
 
   function closeModal(){
     if(!modal.classList.contains("open")) return;
+    lastActive = Date.now();
     modal.classList.remove("open");
     modal.setAttribute("aria-hidden", "true");
     document.body.style.overflow = "";
@@ -625,6 +768,7 @@
       if(e.key === "Escape"){ closeModal(); return; }
       if(e.key === "h" || e.key === "H"){ setDebug(!debug); return; }
       if(modal.classList.contains("open")) return;
+      if(e.key.indexOf("Arrow") === 0) lastActive = Date.now();
       if(e.key === "ArrowLeft") targetYaw = clamp(targetYaw - 0.06, -maxYaw, maxYaw);
       if(e.key === "ArrowRight") targetYaw = clamp(targetYaw + 0.06, -maxYaw, maxYaw);
       if(e.key === "ArrowUp") targetPitch = clamp(targetPitch - 0.04, -maxPitch, maxPitch);
@@ -674,11 +818,19 @@
     loading.classList.add("done");
     setTimeout(function(){ if(loading.parentNode) loading.parentNode.removeChild(loading); }, 900);
     resize();
+    initDust();
     requestAnimationFrame(render);
+    requestAnimationFrame(dustLoop);
   }
 
-  // smooth easing
+  // smooth easing + idle auto-pan
   setInterval(function(){
+    var now = Date.now();
+    if(!reduceMotion && !modal.classList.contains("open") && now - lastActive > 18000){
+      var t = now / 1000;
+      targetYaw = clamp(Math.sin(t * 0.10) * maxYaw * 0.72, -maxYaw, maxYaw);
+      targetPitch = clamp(-0.24 + Math.sin(t * 0.065) * 0.035, -maxPitch, maxPitch);
+    }
     yaw += (targetYaw - yaw) * 0.16;
     pitch += (targetPitch - pitch) * 0.16;
   }, 16);
