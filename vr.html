@@ -770,7 +770,6 @@
 
   function boot(){
     buildSpots();
-    preloadPlants();
     resize();
     window.addEventListener("resize", resize);
     window.addEventListener("orientationchange", function(){ setTimeout(resize, 120); });
@@ -841,6 +840,7 @@
     initDust();
     requestAnimationFrame(render);
     requestAnimationFrame(dustLoop);
+    setTimeout(preloadPlants, 1200);
   }
 
   // smooth easing + idle auto-pan
